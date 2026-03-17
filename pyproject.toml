@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aiplanner"
+version = "0.2.0"
+description = "AI Planner with web and CLI interfaces"
+requires-python = ">=3.11"
+dependencies = [
+  "anthropic>=0.52.0",
+  "fastapi>=0.111.0",
+  "google-genai>=1.0.0",
+  "openai>=1.75.0",
+  "pydantic>=2.7.0",
+  "python-dotenv>=1.0.0",
+  "rich>=13.9.0",
+  "uvicorn[standard]>=0.29.0",
+]
+
+[project.scripts]
+aiplanner = "aiplanner_cli.main:main"
+
+[tool.setuptools]
+packages = ["aiplanner_cli", "planner_core"]

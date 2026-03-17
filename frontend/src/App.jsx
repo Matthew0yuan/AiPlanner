@@ -7,7 +7,13 @@ import './App.css'
 
 function defaultWorkHours() {
   const h = new Date().getHours()
+  if (h >= 23) {
+    return '9-17'
+  }
   const end = Math.min(h + 8, 23)
+  if (end <= h) {
+    return '9-17'
+  }
   return `${h}-${end}`
 }
 

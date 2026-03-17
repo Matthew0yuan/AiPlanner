@@ -99,86 +99,50 @@ function openTimerPopup() {
   return popup
 }
 
-function PomodoroTimer({ onDone, onPhaseChange }) {
-  const [phase, setPhase] = useState('idle')
-  const [remaining, setRemaining] = useState(FOCUS_SEC)
-  const intervalRef = useRef(null)
-
-  useEffect(() => {
-    onPhaseChange(phase, remaining)
-  }, [phase, remaining])
-
-  useEffect(() => {
-    if (phase === 'focus' || phase === 'break') {
-      intervalRef.current = setInterval(() => {
-        setRemaining(r => {
-          if (r <= 1) {
-            clearInterval(intervalRef.current)
-            if (phase === 'focus') {
-              setPhase('break')
-              return BREAK_SEC
-            } else {
-              setPhase('finished')
-              return 0
-            }
-          }
-          return r - 1
-        })
-      }, 1000)
-    }
-    return () => clearInterval(intervalRef.current)
-  }, [phase])
-
-  if (phase === 'idle') {
-    return (
-      <button className="btn-sm" onClick={() => { setPhase('focus'); setRemaining(FOCUS_SEC) }}>
-        Start 25:00
-      </button>
-    )
-  }
-
-  if (phase === 'focus') {
-    return (
-      <div className="pomodoro-running">
-        <span className="pomodoro-time focus">{fmt(remaining)}</span>
-        <button className="btn-sm" onClick={() => { clearInterval(intervalRef.current); setPhase('idle'); setRemaining(FOCUS_SEC) }}>
-          Reset
-        </button>
-      </div>
-    )
-  }
-
-  if (phase === 'break') {
-    return (
-      <div className="pomodoro-running">
-        <span className="pomodoro-time brk">Break {fmt(remaining)}</span>
-        <button className="btn-sm" onClick={() => { clearInterval(intervalRef.current); setPhase('focus'); setRemaining(FOCUS_SEC) }}>
-          Skip break
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="pomodoro-running">
-      <button className="btn-sm" onClick={() => { setPhase('focus'); setRemaining(FOCUS_SEC) }}>
-        +25:00
-      </button>
-      <button className="btn-sm done" onClick={onDone}>
-        Mark done
-      </button>
-    </div>
-  )
-}
-
 export default function Timeline({ blocks, onAction, onReset }) {
   const done = blocks.filter(b => b.status === 'done').length
   const total = blocks.filter(b => b.mode !== 'break').length
   const [activeTimer, setActiveTimer] = useState(null)
   const popupRef = useRef(null)
+  const intervalRef = useRef(null)
 
   useEffect(() => {
-    if (!activeTimer) {
+    if (!activeTimer || (activeTimer.phase !== 'focus' && activeTimer.phase !== 'break')) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+      return
+    }
+
+    intervalRef.current = setInterval(() => {
+      setActiveTimer(current => {
+        if (!current) {
+          return null
+        }
+
+        if (current.phase !== 'focus' && current.phase !== 'break') {
+          return current
+        }
+
+        if (current.remaining <= 1) {
+          if (current.phase === 'focus') {
+            return { ...current, phase: 'break', remaining: BREAK_SEC }
+          }
+
+          return { ...current, phase: 'finished', remaining: 0 }
+        }
+
+        return { ...current, remaining: current.remaining - 1 }
+      })
+    }, 1000)
+
+    return () => {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [activeTimer?.index, activeTimer?.phase])
+
+  useEffect(() => {
+    if (!activeTimer || activeTimer.phase === 'finished') {
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close()
       }
@@ -205,16 +169,54 @@ export default function Timeline({ blocks, onAction, onReset }) {
       phase: isFocus ? 'focus' : 'break',
       title: timeStr,
     }, '*')
-  }, [activeTimer])
+  }, [activeTimer, blocks])
+
+  useEffect(() => {
+    if (!activeTimer) {
+      return
+    }
+
+    const block = blocks[activeTimer.index]
+    if (!block || block.status !== 'pending') {
+      setActiveTimer(null)
+    }
+  }, [activeTimer, blocks])
 
   // clean up popup on unmount
   useEffect(() => {
     return () => {
+      clearInterval(intervalRef.current)
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close()
       }
     }
   }, [])
+
+  function startTimer(index) {
+    setActiveTimer({ index, phase: 'focus', remaining: FOCUS_SEC })
+  }
+
+  function resetTimer() {
+    setActiveTimer(null)
+  }
+
+  function skipBreak() {
+    setActiveTimer(current => current ? { ...current, phase: 'focus', remaining: FOCUS_SEC } : null)
+  }
+
+  function addFocusSession() {
+    setActiveTimer(current => current ? { ...current, phase: 'focus', remaining: FOCUS_SEC } : null)
+  }
+
+  function completeBlock(index) {
+    setActiveTimer(current => current?.index === index ? null : current)
+    onAction(index, 'done')
+  }
+
+  function updateBlockStatus(index, action) {
+    setActiveTimer(current => current?.index === index ? null : current)
+    onAction(index, action)
+  }
 
   return (
     <div className="timeline">
@@ -230,6 +232,8 @@ export default function Timeline({ blocks, onAction, onReset }) {
         const isBreak = block.mode === 'break'
         const isDone = block.status === 'done'
         const isSkipped = block.status === 'skip'
+        const isActiveTimer = activeTimer?.index === i
+        const hasOtherActiveTimer = activeTimer && !isActiveTimer
 
         return (
           <div
@@ -242,17 +246,43 @@ export default function Timeline({ blocks, onAction, onReset }) {
 
             {!isBreak && !isDone && !isSkipped && (
               <div className="time-block-actions">
-                <PomodoroTimer
-                  onDone={() => onAction(i, 'done')}
-                  onPhaseChange={(phase, remaining) =>
-                    setActiveTimer(phase === 'idle' || phase === 'finished'
-                      ? null
-                      : { index: i, phase, remaining }
-                    )
-                  }
-                />
-                <button className="btn-sm skip" onClick={() => onAction(i, 'skip')}>Skip</button>
-                <button className="btn-sm delay" onClick={() => onAction(i, 'delay')}>Delay</button>
+                {!isActiveTimer && (
+                  <button className="btn-sm" onClick={() => startTimer(i)} disabled={hasOtherActiveTimer}>
+                    Start 25:00
+                  </button>
+                )}
+
+                {isActiveTimer && activeTimer.phase === 'focus' && (
+                  <div className="pomodoro-running">
+                    <span className="pomodoro-time focus">{fmt(activeTimer.remaining)}</span>
+                    <button className="btn-sm" onClick={resetTimer}>
+                      Reset
+                    </button>
+                  </div>
+                )}
+
+                {isActiveTimer && activeTimer.phase === 'break' && (
+                  <div className="pomodoro-running">
+                    <span className="pomodoro-time brk">Break {fmt(activeTimer.remaining)}</span>
+                    <button className="btn-sm" onClick={skipBreak}>
+                      Skip break
+                    </button>
+                  </div>
+                )}
+
+                {isActiveTimer && activeTimer.phase === 'finished' && (
+                  <div className="pomodoro-running">
+                    <button className="btn-sm" onClick={addFocusSession}>
+                      +25:00
+                    </button>
+                    <button className="btn-sm done" onClick={() => completeBlock(i)}>
+                      Mark done
+                    </button>
+                  </div>
+                )}
+
+                <button className="btn-sm skip" onClick={() => updateBlockStatus(i, 'skip')}>Skip</button>
+                <button className="btn-sm delay" onClick={() => updateBlockStatus(i, 'delay')}>Delay</button>
               </div>
             )}
 

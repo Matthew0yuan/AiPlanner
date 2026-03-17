@@ -1,0 +1,15 @@
+backend/.env
+backend/__pycache__/
+backend/**/*.pyc
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+cli/.venv/
+cli/__pycache__/
+cli/.tmp/
+.aiplanner-venv/
+.aiplanner-tmp/
+tests/__pycache__/
+*.egg-info/
+*.pyc
+__pycache__/
