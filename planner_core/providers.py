@@ -47,7 +47,8 @@ class GeminiProvider:
                 ),
             )
         except Exception as exc:
-            raise RuntimeError("Gemini request failed") from exc
+            detail = str(exc).strip() or exc.__class__.__name__
+            raise RuntimeError(f"Gemini request failed: {detail}") from exc
 
         raw = (response.text or "").strip()
         if not raw:
@@ -78,7 +79,8 @@ class OpenAIProvider:
                 ],
             )
         except Exception as exc:
-            raise RuntimeError("OpenAI request failed") from exc
+            detail = str(exc).strip() or exc.__class__.__name__
+            raise RuntimeError(f"OpenAI request failed: {detail}") from exc
 
         raw = (getattr(response, "output_text", "") or "").strip()
         if not raw:
@@ -108,7 +110,8 @@ class ClaudeProvider:
                 messages=[{"role": "user", "content": user_message}],
             )
         except Exception as exc:
-            raise RuntimeError("Claude request failed") from exc
+            detail = str(exc).strip() or exc.__class__.__name__
+            raise RuntimeError(f"Claude request failed: {detail}") from exc
 
         parts = []
         for block in response.content:

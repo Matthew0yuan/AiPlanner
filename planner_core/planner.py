@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import date
 
@@ -8,7 +9,26 @@ from planner_core.prompts import (
     SCHEDULE_SYSTEM_PROMPT,
 )
 from planner_core.providers import TextProvider
-from planner_core.validation import validate_time_blocks
+from planner_core.validation import parse_work_hours, validate_time_blocks
+
+
+GENERIC_CODING_KEYWORDS = {"code", "coding", "programming", "development", "dev"}
+GENERIC_FILLER_WORDS = {
+    "a",
+    "an",
+    "complete",
+    "do",
+    "finish",
+    "just",
+    "my",
+    "need",
+    "some",
+    "the",
+    "to",
+    "today",
+    "work",
+    "on",
+}
 
 
 class PlannerService:
@@ -16,6 +36,9 @@ class PlannerService:
         self.provider = provider
 
     def decompose(self, goal: str, work_hours: str = "9-18", deadline: str | None = None) -> list[dict]:
+        if self._is_generic_coding_goal(goal):
+            return [self._build_generic_coding_task(work_hours)]
+
         user_message = f"Goal: {goal}"
         if deadline:
             user_message += f"\nDeadline: {deadline}"
@@ -28,14 +51,42 @@ class PlannerService:
                 tasks = json.loads(raw)
                 if not isinstance(tasks, list):
                     raise ValueError("Expected a JSON array")
-                if not 3 <= len(tasks) <= 10:
-                    raise ValueError(f"Expected 3-10 tasks, got {len(tasks)}")
+                if not 1 <= len(tasks) <= 10:
+                    raise ValueError(f"Expected 1-10 tasks, got {len(tasks)}")
                 return [self._validate_task(task) for task in tasks]
             except (json.JSONDecodeError, ValueError, KeyError) as exc:
                 if attempt == 1:
                     raise ValueError(f"Agent returned invalid JSON after 2 attempts: {exc}\nRaw output: {raw}")
 
         return []
+
+    @staticmethod
+    def _is_generic_coding_goal(goal: str) -> bool:
+        words = [
+            word
+            for word in re.findall(r"[a-z0-9]+", goal.lower())
+            if word not in GENERIC_FILLER_WORDS
+        ]
+        if not words:
+            return False
+        return any(word in GENERIC_CODING_KEYWORDS for word in words) and all(
+            word in GENERIC_CODING_KEYWORDS for word in words
+        )
+
+    @staticmethod
+    def _build_generic_coding_task(work_hours: str) -> dict:
+        start_minutes, end_minutes = parse_work_hours(work_hours)
+        estimate_minutes = max(15, min(end_minutes - start_minutes, 240))
+        return {
+            "id": str(uuid.uuid4()),
+            "title": "Coding",
+            "estimate_minutes": estimate_minutes,
+            "energy": "high",
+            "dependencies": [],
+            "required_materials": [],
+            "acceptance_criteria": "Spend the scheduled block actively coding on the task at hand.",
+            "risk_blockers": [],
+        }
 
     def schedule(self, tasks: list[dict], work_hours: str = "9-18", target_date: str | None = None) -> list[dict]:
         if not target_date:

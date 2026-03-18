@@ -3,6 +3,7 @@ import sys
 from dotenv import load_dotenv
 from rich.console import Console
 
+from aiplanner_cli.activity import ActivityMonitor
 from aiplanner_cli.config import load_config
 from aiplanner_cli.session import PlannerCLI
 
@@ -11,7 +12,8 @@ def main() -> int:
     load_dotenv()
     console = Console()
     config = load_config()
-    app = PlannerCLI(console, config)
+    activity_monitor = ActivityMonitor()
+    app = PlannerCLI(console, config, activity_monitor=activity_monitor)
 
     try:
         app.run()
@@ -21,6 +23,8 @@ def main() -> int:
     except Exception as exc:
         console.print(f"[red]Error:[/red] {exc}")
         return 1
+    finally:
+        activity_monitor.stop()
     return 0
 
 

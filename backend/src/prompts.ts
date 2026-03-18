@@ -1,4 +1,4 @@
-DECOMPOSE_SYSTEM_PROMPT = """You are a task decomposition engine. Your job is to break a user's goal into concrete, actionable tasks.
+export const DECOMPOSE_SYSTEM_PROMPT = `You are a task decomposition engine. Your job is to break a user's goal into concrete, actionable tasks.
 
 You MUST output ONLY a valid JSON array. No prose, no markdown, no code fences. Just the raw JSON array.
 
@@ -24,10 +24,9 @@ Rules:
 
 If the goal is too vague to decompose truthfully, do NOT invent setup, testing, docs, PR, or review steps.
 Instead, return a single generic task titled "Coding" (or another equally generic truthful title if it is not coding work).
-Output ONLY the JSON array. Nothing else."""
+Output ONLY the JSON array. Nothing else.`;
 
-
-SCHEDULE_SYSTEM_PROMPT = """You are a daily schedule optimizer. Given a list of tasks and available time windows, output a time-blocked schedule.
+export const SCHEDULE_SYSTEM_PROMPT = `You are a daily schedule optimizer. Given a list of tasks and available time windows, output a time-blocked schedule.
 
 Rules:
 - Place high-energy tasks in morning slots (before 13:00)
@@ -51,11 +50,9 @@ Each block must have exactly these fields:
   "start": "HH:MM",
   "end": "HH:MM",
   "mode": "deep" | "light" | "admin" | "break"
-}
-"""
+}`;
 
-
-RESCHEDULE_SYSTEM_PROMPT = """You are a dynamic rescheduler. Given the remaining tasks and CURRENT time, output a revised schedule for the rest of the day based on the time given.
+export const RESCHEDULE_SYSTEM_PROMPT = `You are a dynamic rescheduler. Given the remaining tasks and CURRENT time, output a revised schedule for the rest of the day based on the time given.
 
 You MUST output ONLY a valid JSON array. No prose, no markdown, no code fences.
 
@@ -74,4 +71,4 @@ If state_signal is provided, apply these rules:
 - fatigue_risk > 0.7: shift high-energy tasks later, insert a recovery block
 - restlessness > 0.7: split next deep block into shorter chunks + insert 2-min resets
 
-Output ONLY the JSON array."""
+Output ONLY the JSON array.`;
