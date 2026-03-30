@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: aiplanner
+Version: 0.2.0
+Summary: AI Planner with web and CLI interfaces
+Requires-Python: >=3.11
+Requires-Dist: anthropic>=0.52.0
+Requires-Dist: fastapi>=0.111.0
+Requires-Dist: google-genai>=1.0.0
+Requires-Dist: openai>=1.75.0
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: rich>=13.9.0
+Requires-Dist: uvicorn[standard]>=0.29.0
