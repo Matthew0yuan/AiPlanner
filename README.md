@@ -3,7 +3,7 @@
 AI Planner is a local planning tool with two ways to use it:
 
 - `Web version`: a browser UI powered by a React frontend and a Node.js/TypeScript backend 
-- `Normal user version`: a terminal-based CLI that runs locally and guides you through planning from the command line
+- `Normal user version`: a terminal-based CLI that runs locally and guides you through planning from the command line  
 
 Both versions help you break a goal into tasks, schedule time blocks, reschedule when the day changes, and run focus timers.
 
